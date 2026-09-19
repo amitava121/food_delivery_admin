@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promo banners — Admin</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body class="admin-body" data-page="banners">
+    <header class="admin-nav">
+      <button class="drawer-burger" id="drawerBtn" hidden aria-label="Menu">
+        ☰
+      </button>
+      <a class="brand" href="index.html"
+        ><span class="brand-mark">🍽️</span
+        ><span class="brand-name">Spice Route <b>Admin</b></span></a
+      >
+      <div class="admin-nav-right" id="adminNavRight" hidden>
+        <a href="http://localhost:8081" class="admin-link">View site ↗</a>
+        <button class="btn-outline" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <div class="admin-layout" id="adminLayout" hidden>
+      <aside class="admin-drawer" id="adminDrawer">
+        <div class="drawer-head-m">
+          <b>Admin</b>
+          <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+            ✕
+          </button>
+        </div>
+        <nav class="drawer-nav">
+          <a class="drawer-item" href="index.html">
+            <span class="di-ic">📊</span>Dashboard
+          </a>
+          <a class="drawer-item" href="menu.html">
+            <span class="di-ic">🍽️</span>Menu items
+          </a>
+          <a class="drawer-item" href="categories.html">
+            <span class="di-ic">🏷️</span>Categories
+          </a>
+          <a class="drawer-item active" href="banners.html">
+            <span class="di-ic">🖼️</span>Promo banners
+          </a>
+        <a class="drawer-item" href="users.html">
+            <span class="di-ic">👥</span>Users
+          </a>
+        </nav>
+      </aside>
+      <div class="drawer-scrim" id="drawerScrim"></div>
+
+      <main class="admin-main">
+        <div class="admin-toolbar">
+          <h2>Promo banners</h2>
+          <div class="admin-actions">
+            <button class="btn-primary" id="addBannerBtn">+ Add banner</button>
+          </div>
+        </div>
+        <p class="banners-hint">
+          Shown at the top of the customer site — the first active banner's
+          colour also themes the header band.
+        </p>
+        <div class="banner-list" id="bannerList"></div>
+      </main>
+    </div>
+
+    <!-- ===== Banner form modal ===== -->
+    <div class="modal-overlay" id="bannerModal">
+      <form class="modal dish-form" id="bannerForm">
+        <h3 id="bannerFormTitle">Add banner</h3>
+        <div class="form-grid">
+          <label class="span2"
+            >Title<input
+              name="title"
+              required
+              maxlength="60"
+              placeholder="e.g. FREE DELIVERY"
+          /></label>
+          <label
+            >Subtitle<input
+              name="subtitle"
+              maxlength="80"
+              placeholder="e.g. above ₹99"
+          /></label>
+          <label
+            >Button text<input
+              name="cta_text"
+              maxlength="30"
+              placeholder="e.g. Order now ›"
+          /></label>
+          <label
+            >Background colour<input
+              name="bg_color"
+              type="color"
+              value="#f6e3b4"
+          /></label>
+          <label
+            >Order<input
+              name="sort_order"
+              type="number"
+              min="0"
+              value="0"
+              title="Lower shows first"
+          /></label>
+          <div class="span2 img-upload">
+            <label class="file-label"
+              >Upload image<input
+                name="b_image_file"
+                type="file"
+                accept="image/*"
+            /></label>
+            <img id="bImgPreview" hidden alt="banner preview" />
+            <button type="button" id="bImgRemove" class="img-remove" hidden>
+              ✕ Remove
+            </button>
+            <span id="bUploadStatus" class="upload-status"></span>
+          </div>
+          <label class="check"
+            ><input name="is_active" type="checkbox" checked /> Active</label
+          >
+        </div>
+        <p class="login-err" id="bannerFormErr" hidden></p>
+        <div class="form-actions">
+          <button type="button" class="btn-outline" id="bannerCancel">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary">Save banner</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

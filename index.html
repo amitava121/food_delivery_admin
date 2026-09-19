@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — Spice Route Kitchen</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body class="admin-body" data-page="dashboard">
+    <header class="admin-nav">
+      <button class="drawer-burger" id="drawerBtn" hidden aria-label="Menu">
+        ☰
+      </button>
+      <a class="brand" href="index.html"
+        ><span class="brand-mark">🍽️</span
+        ><span class="brand-name">Spice Route <b>Admin</b></span></a
+      >
+      <div class="admin-nav-right" id="adminNavRight" hidden>
+        <a href="http://localhost:8081" class="admin-link">View site ↗</a>
+        <button class="btn-outline" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <!-- ===== Login ===== -->
+    <section class="login-wrap" id="loginView">
+      <form class="login-card" id="loginForm">
+        <h2>Admin sign in</h2>
+        <p class="login-sub">Manage dishes, prices &amp; offers</p>
+        <label
+          >Email<input
+            type="email"
+            id="loginEmail"
+            value="owner@demo.com"
+            required
+        /></label>
+        <label
+          >Password<input
+            type="password"
+            id="loginPass"
+            placeholder="••••••••"
+            required
+        /></label>
+        <p class="login-err" id="loginErr" hidden></p>
+        <button class="btn-primary login-btn" type="submit">Sign in</button>
+        <div class="login-divider"><span>or</span></div>
+        <button class="google-btn" type="button" id="googleLoginBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              fill="#4285F4"
+              d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.46a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.28-2.1 3.56-5.2 3.56-8.81z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.16-4.06 1.16-3.12 0-5.76-2.1-6.7-4.93H1.3v3.09A12 12 0 0 0 12 24z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6v-3.1H1.3a12 12 0 0 0 0 10.8l4-3.1z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.44-3.43A11.98 11.98 0 0 0 12 0 12 12 0 0 0 1.3 6.6l4 3.1c.94-2.83 3.58-4.93 6.7-4.93z"
+            />
+          </svg>
+          Continue with Google
+        </button>
+        <p class="login-hint">Demo: owner@demo.com / demo123</p>
+      </form>
+    </section>
+
+    <!-- ===== Layout: drawer + dashboard ===== -->
+    <div class="admin-layout" id="adminLayout" hidden>
+      <aside class="admin-drawer" id="adminDrawer">
+        <div class="drawer-head-m">
+          <b>Admin</b>
+          <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+            ✕
+          </button>
+        </div>
+        <nav class="drawer-nav">
+          <a class="drawer-item active" href="index.html">
+            <span class="di-ic">📊</span>Dashboard
+          </a>
+          <a class="drawer-item" href="menu.html">
+            <span class="di-ic">🍽️</span>Menu items
+          </a>
+          <a class="drawer-item" href="categories.html">
+            <span class="di-ic">🏷️</span>Categories
+          </a>
+          <a class="drawer-item" href="banners.html">
+            <span class="di-ic">🖼️</span>Promo banners
+          </a>
+          <a class="drawer-item" href="users.html">
+            <span class="di-ic">👥</span>Users
+          </a>
+        </nav>
+      </aside>
+      <div class="drawer-scrim" id="drawerScrim"></div>
+
+      <main class="admin-main">
+        <h2 class="page-title">Dashboard</h2>
+        <div class="admin-stats" id="adminStats"></div>
+        <div class="quick-cards">
+          <a class="quick-card" href="menu.html">
+            <b>🍽️ Menu items</b>
+            <span>Add, edit, hide dishes &amp; offers →</span>
+          </a>
+          <a class="quick-card" href="banners.html">
+            <b>🖼️ Promo banners</b>
+            <span>Manage the top promo strip →</span>
+          </a>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+    <script type="module" src="admin-firebase.js"></script>
+  </body>
+</html>
