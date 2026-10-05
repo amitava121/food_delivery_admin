@@ -27,7 +27,7 @@
         ><span class="brand-name">Spice Route <b>Admin</b></span></a
       >
       <div class="admin-nav-right" id="adminNavRight" hidden>
-        <a href="http://localhost:8081" class="admin-link">View site ↗</a>
+        <a href="http://localhost:3000" class="admin-link">View site ↗</a>
         <button class="btn-outline" id="logoutBtn">Log out</button>
       </div>
     </header>
@@ -44,6 +44,12 @@
           <a class="drawer-item" href="index.html">
             <span class="di-ic">📊</span>Dashboard
           </a>
+          <a class="drawer-item" href="orders.html">
+            <span class="di-ic">🧾</span>Orders
+          </a>
+          <a class="drawer-item" href="kitchen.html">
+            <span class="di-ic">👨‍🍳</span>Kitchen / Chef
+          </a>
           <a class="drawer-item active" href="menu.html">
             <span class="di-ic">🍽️</span>Menu items
           </a>
@@ -53,8 +59,11 @@
           <a class="drawer-item" href="banners.html">
             <span class="di-ic">🖼️</span>Promo banners
           </a>
-        <a class="drawer-item" href="users.html">
+          <a class="drawer-item" href="users.html">
             <span class="di-ic">👥</span>Users
+          </a>
+          <a class="drawer-item" id="adminsNavItem" href="admins.html" hidden>
+            <span class="di-ic">🛡️</span>Admins
           </a>
         </nav>
       </aside>

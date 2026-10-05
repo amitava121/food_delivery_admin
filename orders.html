@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orders Management — Spice Route Admin</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧾</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body class="admin-body" data-page="orders">
+    <header class="admin-nav">
+      <button class="drawer-burger" id="drawerBtn" hidden aria-label="Menu">
+        ☰
+      </button>
+      <a class="brand" href="index.html">
+        <span class="brand-mark">🍽️</span>
+        <span class="brand-name">Spice Route <b>Admin</b></span>
+      </a>
+      <div style="margin-left: 12px; display: flex; align-items: center; gap: 6px;">
+        <span id="wsStatusDot" style="width: 9px; height: 9px; border-radius: 50%; background: #4caf50; display: inline-block;"></span>
+        <small id="wsStatusText" style="color: var(--muted); font-weight: 600; font-size: 11px;">LIVE</small>
+      </div>
+      <div class="admin-nav-right" id="adminNavRight" hidden>
+        <a href="http://localhost:3000" class="admin-link">View site ↗</a>
+        <button class="btn-outline" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <!-- ===== Login ===== -->
+    <section class="login-wrap" id="loginView">
+      <form class="login-card" id="loginForm">
+        <h2>Admin sign in</h2>
+        <p class="login-sub">Manage orders &amp; operations</p>
+        <label
+          >Email<input
+            type="email"
+            id="loginEmail"
+            value="owner@demo.com"
+            required
+        /></label>
+        <label
+          >Password<input
+            type="password"
+            id="loginPass"
+            placeholder="••••••••"
+            required
+        /></label>
+        <p class="login-err" id="loginErr" hidden></p>
+        <button class="btn-primary login-btn" type="submit">Sign in</button>
+        <div class="login-divider"><span>or</span></div>
+        <button class="google-btn" type="button" id="googleLoginBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path
+              fill="#4285F4"
+              d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.46a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.28-2.1 3.56-5.2 3.56-8.81z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.16-4.06 1.16-3.12 0-5.76-2.1-6.7-4.93H1.3v3.09A12 12 0 0 0 12 24z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6v-3.1H1.3a12 12 0 0 0 0 10.8l4-3.1z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.44-3.43A11.98 11.98 0 0 0 12 0 12 12 0 0 0 1.3 6.6l4 3.1c.94-2.83 3.58-4.93 6.7-4.93z"
+            />
+          </svg>
+          Continue with Google
+        </button>
+        <p class="login-hint">Demo: owner@demo.com / demo123</p>
+      </form>
+    </section>
+
+    <!-- ===== Layout: drawer + orders view ===== -->
+    <div class="admin-layout" id="adminLayout" hidden>
+      <aside class="admin-drawer" id="adminDrawer">
+        <div class="drawer-head-m">
+          <b>Admin</b>
+          <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+            ✕
+          </button>
+        </div>
+        <nav class="drawer-nav">
+          <a class="drawer-item" id="navDashboard" href="index.html">
+            <span class="di-ic">📊</span>Dashboard
+          </a>
+          <a class="drawer-item active" id="navOrders" href="orders.html">
+            <span class="di-ic">🧾</span>Orders
+          </a>
+          <a class="drawer-item" id="navKitchen" href="kitchen.html">
+            <span class="di-ic">👨‍🍳</span>Kitchen / Chef
+          </a>
+          <a class="drawer-item" id="navMenu" href="menu.html">
+            <span class="di-ic">🍽️</span>Menu items
+          </a>
+          <a class="drawer-item" id="navCategories" href="categories.html">
+            <span class="di-ic">🏷️</span>Categories
+          </a>
+          <a class="drawer-item" id="navBanners" href="banners.html">
+            <span class="di-ic">🖼️</span>Promo banners
+          </a>
+          <a class="drawer-item" id="navUsers" href="users.html">
+            <span class="di-ic">👥</span>Users
+          </a>
+          <a class="drawer-item" id="adminsNavItem" href="admins.html" hidden>
+            <span class="di-ic">🛡️</span>Admins
+          </a>
+        </nav>
+      </aside>
+      <div class="drawer-scrim" id="drawerScrim"></div>
+
+      <main class="admin-main">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 class="page-title" style="margin: 0;">Restaurant Orders</h2>
+            <p style="color: var(--muted); font-size: 13px; margin: 4px 0 0 0;">
+              Real-time operational orders and status transitions.
+            </p>
+          </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="orders-tabs" id="orderFilterTabs">
+          <button class="order-tab-btn active" data-tab="all" onclick="filterOrderTab('all')">All</button>
+          <button class="order-tab-btn" data-tab="new" onclick="filterOrderTab('new')">New</button>
+          <button class="order-tab-btn" data-tab="preparing" onclick="filterOrderTab('preparing')">Preparing</button>
+          <button class="order-tab-btn" data-tab="ready" onclick="filterOrderTab('ready')">Ready</button>
+          <button class="order-tab-btn" data-tab="out_for_delivery" onclick="filterOrderTab('out_for_delivery')">Out for Delivery</button>
+          <button class="order-tab-btn" data-tab="completed" onclick="filterOrderTab('completed')">Completed</button>
+          <button class="order-tab-btn" data-tab="cancelled" onclick="filterOrderTab('cancelled')">Cancelled</button>
+        </div>
+
+        <div class="dish-table-wrap" style="background: #fff; border-radius: 16px; border: 1px solid var(--line); overflow: hidden;">
+          <table class="dish-table" id="ordersTable">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Type</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">Loading orders...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+    <!-- ===== Order Detail & Actions Modal ===== -->
+    <div class="edit-overlay" id="orderDetailOverlay">
+      <div class="edit-card" style="max-width: 520px; width: 95%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+          <div>
+            <h3 id="modalOrderNum" style="margin: 0; font-size: 18px;">Order Details</h3>
+            <small id="modalOrderDate" style="color: var(--muted);"></small>
+          </div>
+          <button class="btn-outline" style="padding: 4px 10px;" onclick="closeOrderDetailModal()">✕</button>
+        </div>
+
+        <div id="modalOrderContent" style="padding: 14px 0; max-height: 65vh; overflow-y: auto;">
+          <!-- dynamically populated -->
+        </div>
+
+        <div style="border-top: 1px solid var(--line); padding-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 8px;" id="modalStatusActions">
+            <!-- status transition buttons -->
+          </div>
+          <button class="btn-outline" onclick="closeOrderDetailModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+    <script type="module" src="admin-firebase.js"></script>
+  </body>
+</html>

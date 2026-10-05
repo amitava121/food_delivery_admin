@@ -112,7 +112,7 @@ const API = (() => {
   const deleteBanner = (id, token) =>
     req(`/banners/${id}`, { method: "DELETE", token });
 
-  /* Users (Google sign-ins synced from the customer site) */
+  /* Users (Normal application users: Customers & Kitchen/Chef) */
   const users = (token) => req("/auth/users", { token });
   const createUser = (body, token) =>
     req("/auth/users", { method: "POST", body, token });
@@ -120,6 +120,26 @@ const API = (() => {
     req(`/auth/users/${id}`, { method: "PATCH", body: patch, token });
   const deleteUser = (id, token) =>
     req(`/auth/users/${id}`, { method: "DELETE", token });
+
+  /* Admins (Super Admin only) */
+  const admins = (token) => req("/auth/admins", { token });
+  const createAdmin = (body, token) =>
+    req("/auth/admins", { method: "POST", body, token });
+  const updateAdmin = (id, patch, token) =>
+    req(`/auth/admins/${id}`, { method: "PATCH", body: patch, token });
+  const deleteAdmin = (id, token) =>
+    req(`/auth/admins/${id}`, { method: "DELETE", token });
+
+  /* Orders (Admin & Kitchen operations) */
+  const orders = (token, status) =>
+    req(`/orders/${status ? "?status=" + encodeURIComponent(status) : ""}`, { token });
+  const order = (id, token) => req(`/orders/${id}`, { token });
+  const updateOrderStatus = (id, status, token) =>
+    req(`/orders/${id}/status`, {
+      method: "PATCH",
+      body: { status },
+      token,
+    });
 
   return {
     BASE,
@@ -144,5 +164,12 @@ const API = (() => {
     createUser,
     updateUser,
     deleteUser,
+    admins,
+    createAdmin,
+    updateAdmin,
+    deleteAdmin,
+    orders,
+    order,
+    updateOrderStatus,
   };
 })();

@@ -620,6 +620,10 @@
   background: #eef0f3;
   color: #5a5a6e;
 }
+.role-badge.role-super_admin {
+  background: #ede7f6;
+  color: #4527a0;
+}
 .role-badge.role-admin {
   background: #fdeaea;
   color: #c62828;
@@ -767,3 +771,210 @@
   font-size: 12.5px;
   color: #7a7a88;
 }
+
+/* =========================================================
+   Phase 2: Admin Orders & Kitchen / Chef Ticket UI
+   ========================================================= */
+.orders-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+.order-tab-btn {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.order-tab-btn:hover {
+  border-color: var(--brand);
+}
+.order-tab-btn.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+.order-badge-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.badge-pending { background: #fff3e0; color: #e65100; }
+.badge-confirmed { background: #e3f2fd; color: #1565c0; }
+.badge-preparing { background: #f3e5f5; color: #7b1fa2; }
+.badge-ready { background: #e8f5e9; color: #2e7d32; }
+.badge-out_for_delivery { background: #e0f7fa; color: #00838f; }
+.badge-delivered, .badge-picked_up { background: #e8f5e9; color: #1b5e20; }
+.badge-cancelled { background: #ffebee; color: #c62828; }
+
+.fulfillment-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f0f0f4;
+  color: var(--ink);
+}
+
+/* Kitchen Ticket Screen */
+.kitchen-stats-bar {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.kitchen-stat-chip {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kitchen-stat-chip b {
+  font-size: 20px;
+  color: var(--brand);
+}
+.kitchen-stat-chip span {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.kitchen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.kitchen-card {
+  background: #fff;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+  transition: all 0.2s;
+}
+.kitchen-card.status-confirmed {
+  border-color: #1976d2;
+}
+.kitchen-card.status-preparing {
+  border-color: #e65100;
+  box-shadow: 0 0 12px rgba(230, 81, 0, 0.18);
+}
+.kc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+.kc-num {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.kc-customer {
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.kc-customer b {
+  color: var(--ink);
+}
+.kc-items {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.kc-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #f9f9fb;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.kc-item-qty {
+  background: #2b2b3a;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.kc-notes {
+  background: #fff8e1;
+  border-left: 3px solid #ffb300;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: #8d6e63;
+  margin: 8px 0;
+  font-weight: 500;
+}
+.kc-timing {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+.kc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.kc-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.kc-btn-prep {
+  background: #1976d2;
+  color: #fff;
+}
+.kc-btn-prep:hover {
+  background: #1565c0;
+}
+.kc-btn-ready {
+  background: #2e7d32;
+  color: #fff;
+}
+.kc-btn-ready:hover {
+  background: #1b5e20;
+}
+.kc-btn-view {
+  background: var(--line);
+  color: var(--ink);
+}
+

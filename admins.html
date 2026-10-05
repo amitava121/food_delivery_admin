@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Users — Admin</title>
+    <title>Administrators — Admin</title>
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>"
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="admin.css" />
   </head>
-  <body class="admin-body" data-page="users">
+  <body class="admin-body" data-page="admins">
     <header class="admin-nav">
       <button class="drawer-burger" id="drawerBtn" hidden aria-label="Menu">
         ☰
@@ -59,10 +59,10 @@
           <a class="drawer-item" href="banners.html">
             <span class="di-ic">🖼️</span>Promo banners
           </a>
-          <a class="drawer-item active" href="users.html">
+          <a class="drawer-item" href="users.html">
             <span class="di-ic">👥</span>Users
           </a>
-          <a class="drawer-item" id="adminsNavItem" href="admins.html" hidden>
+          <a class="drawer-item active" id="adminsNavItem" href="admins.html">
             <span class="di-ic">🛡️</span>Admins
           </a>
         </nav>
@@ -71,53 +71,53 @@
 
       <main class="admin-main">
         <div class="admin-toolbar">
-          <h2>Users</h2>
+          <h2>Administrators</h2>
           <div class="admin-actions">
             <div class="filter-wrap">
-              <button class="btn-outline" id="userFilterBtn">
-                ▾ Filter: <span id="userFilterLabel">All</span>
+              <button class="btn-outline" id="adminFilterBtn">
+                ▾ Filter: <span id="adminFilterLabel">All</span>
               </button>
-              <div class="filter-pop" id="filterModal">
+              <div class="filter-pop" id="adminFilterModal">
                 <button
                   type="button"
                   class="filter-opt"
                   data-filter="all"
-                  onclick="setUserFilter('all')"
+                  onclick="setAdminFilter('all')"
                 >
-                  All users<span class="fo-sub">Customers + Chefs</span>
+                  All administrators<span class="fo-sub">Super Admin + Admins</span>
                 </button>
                 <button
                   type="button"
                   class="filter-opt"
-                  data-filter="customer"
-                  onclick="setUserFilter('customer')"
+                  data-filter="super_admin"
+                  onclick="setAdminFilter('super_admin')"
                 >
-                  Customers only<span class="fo-sub">registered customers</span>
+                  Super Admin only<span class="fo-sub">highest authority</span>
                 </button>
                 <button
                   type="button"
                   class="filter-opt"
-                  data-filter="kitchen"
-                  onclick="setUserFilter('kitchen')"
+                  data-filter="admin"
+                  onclick="setAdminFilter('admin')"
                 >
-                  Chefs only<span class="fo-sub">kitchen staff</span>
+                  Normal Admin only<span class="fo-sub">store managers</span>
                 </button>
               </div>
             </div>
-            <button class="btn-primary" id="addUserBtn">+ Add user</button>
+            <button class="btn-primary" id="addAdminBtn">+ Add administrator</button>
           </div>
         </div>
         <p class="banners-hint">
-          Manage normal application users (Customers and Chefs). Administrators are managed in the Admins section.
+          Manage administrator and super administrator accounts. Restricted exclusively to Super Admin.
         </p>
-        <div class="banner-list" id="userList"></div>
+        <div class="banner-list" id="adminList"></div>
       </main>
     </div>
 
-    <!-- ===== Add-user modal ===== -->
-    <div class="modal-overlay" id="addUserModal">
-      <form class="modal dish-form" id="addUserForm">
-        <h3>Add user</h3>
+    <!-- ===== Add-Admin modal ===== -->
+    <div class="modal-overlay" id="addAdminModal">
+      <form class="modal dish-form" id="addAdminForm">
+        <h3>Add administrator</h3>
         <div class="form-grid">
           <label class="span2"
             >Name<input
@@ -131,7 +131,7 @@
               name="email"
               type="email"
               required
-              placeholder="user@example.com"
+              placeholder="admin@example.com"
           /></label>
           <label class="span2"
             >Password<input
@@ -141,29 +141,29 @@
               minlength="6"
               placeholder="••••••••"
           /></label>
-          <div class="span2 role-picker" id="rolePicker">
-            <button type="button" class="role-opt sel" data-role="customer">
-              Customer
+          <div class="span2 role-picker" id="addAdminRolePicker">
+            <button type="button" class="role-opt sel" data-role="admin">
+              Admin
             </button>
-            <button type="button" class="role-opt" data-role="kitchen">
-              Chef
+            <button type="button" class="role-opt" data-role="super_admin">
+              Super Admin
             </button>
           </div>
         </div>
-        <p class="login-err" id="addUserErr" hidden></p>
+        <p class="login-err" id="addAdminErr" hidden></p>
         <div class="form-actions">
-          <button type="button" class="btn-outline" id="addUserCancel">
+          <button type="button" class="btn-outline" id="addAdminCancel">
             Cancel
           </button>
-          <button type="submit" class="btn-primary">Create user</button>
+          <button type="submit" class="btn-primary">Create admin</button>
         </div>
       </form>
     </div>
 
-    <!-- ===== Edit-name modal ===== -->
-    <div class="modal-overlay" id="userModal">
-      <form class="modal dish-form" id="userForm">
-        <h3>Edit user</h3>
+    <!-- ===== Edit-Admin modal ===== -->
+    <div class="modal-overlay" id="editAdminModal">
+      <form class="modal dish-form" id="editAdminForm">
+        <h3>Edit administrator</h3>
         <div class="form-grid">
           <label class="span2"
             >Name<input
@@ -172,22 +172,22 @@
               maxlength="60"
               placeholder="Full name"
           /></label>
-          <div class="span2" id="userRoleWrap">
-            <p class="role-cur" id="userEmailCur">—</p>
-            <p class="role-cur">Current role: <b id="userRoleCur">—</b></p>
-            <div class="role-picker" id="editRolePicker">
-              <button type="button" class="role-opt" data-role="customer">
-                Customer
+          <div class="span2" id="adminRoleWrap">
+            <p class="role-cur" id="adminEmailCur">—</p>
+            <p class="role-cur">Current role: <b id="adminRoleCur">—</b></p>
+            <div class="role-picker" id="editAdminRolePicker">
+              <button type="button" class="role-opt" data-role="admin">
+                Admin
               </button>
-              <button type="button" class="role-opt" data-role="kitchen">
-                Chef
+              <button type="button" class="role-opt" data-role="super_admin">
+                Super Admin
               </button>
             </div>
           </div>
         </div>
-        <p class="login-err" id="userFormErr" hidden></p>
+        <p class="login-err" id="editAdminErr" hidden></p>
         <div class="form-actions">
-          <button type="button" class="btn-outline" id="userCancel">
+          <button type="button" class="btn-outline" id="editAdminCancel">
             Cancel
           </button>
           <button type="submit" class="btn-primary">Save</button>

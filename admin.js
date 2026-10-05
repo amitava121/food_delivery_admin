@@ -39,6 +39,7 @@ const esc = (s) =>
         c
       ],
   );
+const rupee = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
 function toast(msg) {
   const t = $("toast");
@@ -73,11 +74,94 @@ function closeDrawer() {
 
 async function refresh() {
   try {
+    const me = await API.req("/auth/me", { token });
+    myRoles = me.roles || [];
+    const isSuperAdmin = myRoles.includes("super_admin");
+    const isAdmin = myRoles.includes("admin");
+    const isKitchen = myRoles.includes("kitchen");
+    const hasAdminAccess = isSuperAdmin || isAdmin;
+
+    if (PAGE === "kitchen") {
+      if (!isKitchen && !hasAdminAccess) {
+        sessionStorage.removeItem("srk_admin_token");
+        token = "";
+        toast("Access denied. Kitchen or Admin privileges required.");
+        showLogin();
+        return;
+      }
+      if (isKitchen && !hasAdminAccess) {
+        if ($("navDashboard")) $("navDashboard").hidden = true;
+        if ($("navMenu")) $("navMenu").hidden = true;
+        if ($("navCategories")) $("navCategories").hidden = true;
+        if ($("navBanners")) $("navBanners").hidden = true;
+        if ($("navUsers")) $("navUsers").hidden = true;
+        if ($("navOrders")) $("navOrders").hidden = true;
+      }
+      showAdmin();
+      await loadKitchenOrders();
+      connectOrdersSocket();
+      return;
+    }
+
+    if (PAGE === "orders") {
+      if (!hasAdminAccess) {
+        if (isKitchen) {
+          location.href = "kitchen.html";
+          return;
+        }
+        sessionStorage.removeItem("srk_admin_token");
+        token = "";
+        toast("Access denied. Admin privileges required.");
+        showLogin();
+        return;
+      }
+      showAdmin();
+      const adminsNav = $("adminsNavItem");
+      if (adminsNav) adminsNav.hidden = !isSuperAdmin;
+      await loadAdminOrders();
+      connectOrdersSocket();
+      return;
+    }
+
+    if (!hasAdminAccess) {
+      if (isKitchen) {
+        location.href = "kitchen.html";
+        return;
+      }
+      sessionStorage.removeItem("srk_admin_token");
+      token = "";
+      toast("Access denied. Admin privileges required.");
+      if ($("loginView")) {
+        showLogin();
+        $("loginErr").textContent = "Access denied: Admin privileges required.";
+        $("loginErr").hidden = false;
+      } else {
+        location.href = "index.html";
+      }
+      return;
+    }
+
+    const adminsNav = $("adminsNavItem");
+    if (adminsNav) adminsNav.hidden = !isSuperAdmin;
+
+    if (PAGE === "admins") {
+      if (!isSuperAdmin) {
+        toast("Super Admin access required.");
+        setTimeout(() => {
+          location.href = "index.html";
+        }, 800);
+        return;
+      }
+      await loadAdmins();
+      return;
+    }
+
     rid = rid || (await API.restaurantId());
     const [data, b] = await Promise.all([
       API.menu(rid),
       $("bannerList") ? API.banners(rid, token) : Promise.resolve([]),
     ]);
+
     categories = data.categories;
     items = data.items;
     if ($("adminStats")) renderStats();
@@ -89,6 +173,13 @@ async function refresh() {
       renderBanners();
     }
   } catch (e) {
+    if (e.message && e.message.includes("Super Admin access required")) {
+      toast("Super Admin access required.");
+      setTimeout(() => {
+        location.href = "index.html";
+      }, 800);
+      return;
+    }
     toast("API error: " + e.message);
   }
 }
@@ -574,7 +665,7 @@ async function delCat(id) {
   }
 }
 
-/* ============ Users page ============ */
+/* ============ Users page (Customers & Chefs) ============ */
 let users = [];
 let userFilter = "all";
 let editingUserId = null;
@@ -582,33 +673,38 @@ let myRoles = [];
 let editUserRoles = new Set();
 
 const ROLE_LABEL = {
+  super_admin: "Super Admin",
   admin: "Admin",
   kitchen: "Chef",
   customer: "User",
 };
 
 async function loadUsers() {
-  const [me, list] = await Promise.all([
-    API.req("/auth/me", { token }),
-    API.users(token),
-  ]);
-  myRoles = me.roles || [];
-  users = list;
-  renderUsers();
+  try {
+    const list = await API.users(token);
+    users = list;
+    renderUsers();
+  } catch (e) {
+    toast("Failed to load users: " + e.message);
+  }
 }
 
 function setUserFilter(f) {
   userFilter = f;
-  $("userFilterLabel").textContent = f === "admin" ? "Admin only" : "All";
-  $("filterModal").classList.remove("open");
+  $("userFilterLabel").textContent =
+    f === "customer" ? "Customers" : f === "kitchen" ? "Chefs" : "All";
+  $("filterModal")?.classList.remove("open");
   renderUsers();
 }
 
 function renderUsers() {
-  const list =
-    userFilter === "admin"
-      ? users.filter((u) => (u.roles || []).includes("admin"))
-      : users;
+  let list = users;
+  if (userFilter === "customer") {
+    list = users.filter((u) => (u.roles || []).includes("customer"));
+  } else if (userFilter === "kitchen") {
+    list = users.filter((u) => (u.roles || []).includes("kitchen"));
+  }
+
   $("userList").innerHTML = list.length
     ? list
         .map(
@@ -619,7 +715,7 @@ function renderUsers() {
           <span>${esc(u.email)}${u.phone ? " · " + esc(u.phone) : ""}</span>
         </div>
         <div class="row-actions">
-          <button onclick="openUserEdit(${u.id})" title="Edit name">✏️</button>
+          <button onclick="openUserEdit(${u.id})" title="Edit name & role">✏️</button>
           <button class="${u.is_blocked ? "" : "del"}" onclick="toggleBlock(${u.id})" title="${u.is_blocked ? "Unblock" : "Block"}">${u.is_blocked ? "🔓" : "🚫"}</button>
           <button class="del" onclick="delUser(${u.id})" title="Delete">🗑️</button>
         </div>
@@ -627,9 +723,11 @@ function renderUsers() {
         )
         .join("")
     : `<p class="banners-hint">${
-        userFilter === "admin"
-          ? "No admin users."
-          : "No users yet — they appear here after signing in on the site."
+        userFilter === "customer"
+          ? "No customer users."
+          : userFilter === "kitchen"
+            ? "No chef / kitchen users."
+            : "No users yet."
       }</p>`;
 }
 
@@ -644,9 +742,6 @@ function openUserEdit(id) {
   $("userRoleCur").textContent = (u.roles || [])
     .map((r) => ROLE_LABEL[r] || r)
     .join(", ");
-  /* only admins may change roles */
-  const canEditRole = myRoles.includes("admin");
-  $("editRolePicker").style.display = canEditRole ? "" : "none";
   document
     .querySelectorAll("#editRolePicker .role-opt")
     .forEach((b) =>
@@ -657,17 +752,9 @@ function openUserEdit(id) {
 
 async function submitUser(e) {
   e.preventDefault();
-  const canEditRole = myRoles.includes("admin");
   const patch = { name: e.target.name.value.trim() };
-  const orig = users.find((x) => x.id === editingUserId);
-  if (canEditRole && orig) {
-    const next = [...editUserRoles];
-    if (
-      JSON.stringify(next.sort()) !==
-      JSON.stringify([...(orig.roles || [])].sort())
-    )
-      patch.roles = next;
-  }
+  const next = [...editUserRoles];
+  if (next.length) patch.roles = next;
   try {
     await API.updateUser(editingUserId, patch, token);
     toast("User updated");
@@ -718,8 +805,8 @@ function openAddUser() {
 }
 
 function toggleNewRole(r) {
-  newUserRoles.has(r) ? newUserRoles.delete(r) : newUserRoles.add(r);
-  if (!newUserRoles.size) newUserRoles.add("customer");
+  newUserRoles.clear();
+  newUserRoles.add(r);
   document
     .querySelectorAll("#rolePicker .role-opt")
     .forEach((b) =>
@@ -746,6 +833,187 @@ async function submitAddUser(e) {
   } catch (e2) {
     $("addUserErr").textContent = e2.message;
     $("addUserErr").hidden = false;
+  }
+}
+
+/* ============ Administrators page (Super Admin Only) ============ */
+let adminList = [];
+let adminFilter = "all";
+let editingAdminId = null;
+let newAdminRoles = new Set(["admin"]);
+let editAdminRoles = new Set(["admin"]);
+
+async function loadAdmins() {
+  try {
+    adminList = await API.admins(token);
+    renderAdmins();
+  } catch (e) {
+    toast("Failed to load administrators: " + e.message);
+    if (e.message && e.message.includes("Super Admin access required")) {
+      setTimeout(() => {
+        location.href = "index.html";
+      }, 800);
+    }
+  }
+}
+
+function setAdminFilter(f) {
+  adminFilter = f;
+  $("adminFilterLabel").textContent =
+    f === "super_admin" ? "Super Admin" : f === "admin" ? "Admin" : "All";
+  $("adminFilterModal")?.classList.remove("open");
+  renderAdmins();
+}
+
+function renderAdmins() {
+  let list = adminList;
+  if (adminFilter === "super_admin") {
+    list = adminList.filter((u) => (u.roles || []).includes("super_admin"));
+  } else if (adminFilter === "admin") {
+    list = adminList.filter((u) => !(u.roles || []).includes("super_admin"));
+  }
+
+  $("adminList").innerHTML = list.length
+    ? list
+        .map((u) => {
+          const isSa = (u.roles || []).includes("super_admin");
+          return `<div class="banner-row ${u.is_blocked ? "user-blocked" : ""}">
+        ${u.photo_url ? `<img class="b-thumb" src="${esc(u.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;b-swatch cat-ic&quot;>🛡️</span>'" />` : `<span class="b-swatch cat-ic">🛡️</span>`}
+        <div class="b-text">
+          <b>${esc(u.name)} ${(u.roles || []).map((r) => `<span class="role-badge role-${r}">${ROLE_LABEL[r] || r}</span>`).join(" ")}${u.is_blocked ? ' <span class="user-badge">blocked</span>' : ""}</b>
+          <span>${esc(u.email)}${u.phone ? " · " + esc(u.phone) : ""}</span>
+        </div>
+        <div class="row-actions">
+          <button onclick="openAdminEdit(${u.id})" title="Edit name & role">✏️</button>
+          <button class="${u.is_blocked ? "" : "del"}" onclick="toggleAdminBlock(${u.id})" title="${u.is_blocked ? "Unblock" : "Block"}">${u.is_blocked ? "🔓" : "🚫"}</button>
+          ${isSa ? "" : `<button class="del" onclick="delAdmin(${u.id})" title="Delete">🗑️</button>`}
+        </div>
+      </div>`;
+        })
+        .join("")
+    : `<p class="banners-hint">No administrators found.</p>`;
+}
+
+function openAddAdmin() {
+  $("addAdminForm").reset();
+  newAdminRoles = new Set(["admin"]);
+  document
+    .querySelectorAll("#addAdminRolePicker .role-opt")
+    .forEach((b) =>
+      b.classList.toggle("sel", newAdminRoles.has(b.dataset.role)),
+    );
+  $("addAdminErr").hidden = true;
+  $("addAdminModal").classList.add("open");
+}
+
+function toggleNewAdminRole(r) {
+  newAdminRoles.clear();
+  if (r === "super_admin") {
+    newAdminRoles.add("admin");
+    newAdminRoles.add("super_admin");
+  } else {
+    newAdminRoles.add("admin");
+  }
+  document
+    .querySelectorAll("#addAdminRolePicker .role-opt")
+    .forEach((b) =>
+      b.classList.toggle("sel", newAdminRoles.has(b.dataset.role)),
+    );
+}
+
+function toggleEditAdminRole(r) {
+  editAdminRoles.clear();
+  if (r === "super_admin") {
+    editAdminRoles.add("admin");
+    editAdminRoles.add("super_admin");
+  } else {
+    editAdminRoles.add("admin");
+  }
+  document
+    .querySelectorAll("#editAdminRolePicker .role-opt")
+    .forEach((b) =>
+      b.classList.toggle("sel", editAdminRoles.has(b.dataset.role)),
+    );
+}
+
+async function submitAddAdmin(e) {
+  e.preventDefault();
+  const f = e.target;
+  try {
+    await API.createAdmin(
+      {
+        name: f.name.value.trim(),
+        email: f.email.value.trim(),
+        password: f.password.value,
+        roles: [...newAdminRoles],
+      },
+      token,
+    );
+    toast("Administrator created");
+    $("addAdminModal").classList.remove("open");
+    loadAdmins();
+  } catch (e2) {
+    $("addAdminErr").textContent = e2.message;
+    $("addAdminErr").hidden = false;
+  }
+}
+
+function openAdminEdit(id) {
+  const u = adminList.find((x) => x.id === id);
+  if (!u) return;
+  editingAdminId = id;
+  $("editAdminForm").name.value = u.name;
+  $("editAdminErr").hidden = true;
+  editAdminRoles = new Set(u.roles || ["admin"]);
+  $("adminEmailCur").textContent = u.email;
+  $("adminRoleCur").textContent = (u.roles || [])
+    .map((r) => ROLE_LABEL[r] || r)
+    .join(", ");
+  document
+    .querySelectorAll("#editAdminRolePicker .role-opt")
+    .forEach((b) =>
+      b.classList.toggle("sel", editAdminRoles.has(b.dataset.role)),
+    );
+  $("editAdminModal").classList.add("open");
+}
+
+async function submitAdmin(e) {
+  e.preventDefault();
+  const patch = { name: e.target.name.value.trim() };
+  const next = [...editAdminRoles];
+  if (next.length) patch.roles = next;
+  try {
+    await API.updateAdmin(editingAdminId, patch, token);
+    toast("Administrator updated");
+    $("editAdminModal").classList.remove("open");
+    loadAdmins();
+  } catch (e2) {
+    $("editAdminErr").textContent = e2.message;
+    $("editAdminErr").hidden = false;
+  }
+}
+
+async function toggleAdminBlock(id) {
+  const u = adminList.find((x) => x.id === id);
+  if (!u) return;
+  try {
+    await API.updateAdmin(id, { is_blocked: !u.is_blocked }, token);
+    toast(u.is_blocked ? "Administrator unblocked" : "Administrator blocked");
+    loadAdmins();
+  } catch (e) {
+    toast("Failed: " + e.message);
+  }
+}
+
+async function delAdmin(id) {
+  const u = adminList.find((x) => x.id === id);
+  if (!confirm(`Delete administrator "${u ? u.name : ""}"?`)) return;
+  try {
+    await API.deleteAdmin(id, token);
+    toast("Administrator deleted");
+    loadAdmins();
+  } catch (e) {
+    toast("Failed: " + e.message);
   }
 }
 
@@ -876,6 +1144,46 @@ if ($("userForm")) {
     if (e.target === $("userModal")) $("userModal").classList.remove("open");
   });
 }
+/* admins page */
+if ($("adminList")) {
+  $("adminFilterBtn")?.addEventListener("click", () => {
+    document
+      .querySelectorAll("#adminFilterModal .filter-opt")
+      .forEach((b) =>
+        b.classList.toggle("sel", b.dataset.filter === adminFilter),
+      );
+    $("adminFilterModal")?.classList.add("open");
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".filter-wrap"))
+      $("adminFilterModal")?.classList.remove("open");
+  });
+  $("addAdminBtn")?.addEventListener("click", openAddAdmin);
+  $("addAdminForm")?.addEventListener("submit", submitAddAdmin);
+  $("addAdminCancel")?.addEventListener("click", () =>
+    $("addAdminModal").classList.remove("open"),
+  );
+  $("addAdminModal")?.addEventListener("click", (e) => {
+    if (e.target === $("addAdminModal"))
+      $("addAdminModal").classList.remove("open");
+  });
+  document
+    .querySelectorAll("#addAdminRolePicker .role-opt")
+    .forEach((b) =>
+      b.addEventListener("click", () => toggleNewAdminRole(b.dataset.role)),
+    );
+  document.querySelectorAll("#editAdminRolePicker .role-opt").forEach((b) =>
+    b.addEventListener("click", () => toggleEditAdminRole(b.dataset.role)),
+  );
+  $("editAdminForm")?.addEventListener("submit", submitAdmin);
+  $("editAdminCancel")?.addEventListener("click", () =>
+    $("editAdminModal").classList.remove("open"),
+  );
+  $("editAdminModal")?.addEventListener("click", (e) => {
+    if (e.target === $("editAdminModal"))
+      $("editAdminModal").classList.remove("open");
+  });
+}
 /* banners page */
 if ($("bannerForm")) {
   $("addBannerBtn").addEventListener("click", openBannerAdd);
@@ -907,6 +1215,9 @@ document.addEventListener("keydown", (e) => {
     $("userModal")?.classList.remove("open");
     $("addUserModal")?.classList.remove("open");
     $("filterModal")?.classList.remove("open");
+    $("editAdminModal")?.classList.remove("open");
+    $("addAdminModal")?.classList.remove("open");
+    $("adminFilterModal")?.classList.remove("open");
   }
 });
 
@@ -923,18 +1234,389 @@ document.addEventListener("keydown", (e) => {
     t = setTimeout(() => {
       if (type === "users_changed") {
         if ($("userList")) loadUsers();
-      } else refresh();
+      } else if (type === "admins_changed") {
+        if ($("adminList")) loadAdmins();
+      } else if (type === "menu_changed" || !type) {
+        if (PAGE === "dashboard" || PAGE === "menu" || PAGE === "categories" || PAGE === "banners") {
+          refresh();
+        }
+      }
     }, 250);
   };
   ws.onclose = () => setTimeout(connectMenuSocket, 3000);
   ws.onerror = () => ws.close();
 })();
 
+/* ============ Dedicated Orders WebSocket (Chef & Admin) ============ */
+let orderWs = null;
+function connectOrdersSocket() {
+  if (orderWs && (orderWs.readyState === WebSocket.OPEN || orderWs.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+  const currentToken = token || sessionStorage.getItem("srk_admin_token") || "";
+  if (!currentToken) return;
+  const wsUrl = API.BASE.replace(/^http/, "ws") + "/ws/orders?token=" + encodeURIComponent(currentToken);
+  try {
+    orderWs = new WebSocket(wsUrl);
+    orderWs.onopen = () => {
+      const dot = $("wsStatusDot");
+      const txt = $("wsStatusText");
+      if (dot) dot.style.background = "#4caf50";
+      if (txt) {
+        txt.textContent = "LIVE";
+        txt.style.color = "#4caf50";
+      }
+    };
+    orderWs.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data || "{}");
+        if (data.type === "order_created" || data.type === "order_status_changed") {
+          if (PAGE === "kitchen") {
+            loadKitchenOrders();
+            if (data.type === "order_created") {
+              toast(`🔔 New Order #${data.order_number || data.order_id}!`);
+            }
+          } else if (PAGE === "orders") {
+            loadAdminOrders();
+            if (data.type === "order_created") {
+              toast(`🔔 New Order #${data.order_number || data.order_id}!`);
+            }
+            if (activeAdminOrderId === data.order_id) {
+              openOrderDetail(data.order_id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Orders WS parse error:", err);
+      }
+    };
+    orderWs.onclose = () => {
+      const dot = $("wsStatusDot");
+      const txt = $("wsStatusText");
+      if (dot) dot.style.background = "#ffa000";
+      if (txt) {
+        txt.textContent = "RECONNECTING";
+        txt.style.color = "#ffa000";
+      }
+      setTimeout(connectOrdersSocket, 3500);
+    };
+    orderWs.onerror = () => {
+      try { orderWs.close(); } catch {}
+    };
+  } catch (err) {
+    console.warn("Orders WS connect error:", err);
+  }
+}
+
+/* ============ Kitchen / Chef Screen Logic ============ */
+let kitchenOrders = [];
+
+async function loadKitchenOrders() {
+  try {
+    const list = await API.orders(token);
+    kitchenOrders = (list || []).filter(
+      (o) => o.status === "pending" || o.status === "confirmed" || o.status === "preparing",
+    );
+    kitchenOrders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const confirmedCount = kitchenOrders.filter((o) => o.status === "pending" || o.status === "confirmed").length;
+    const preparingCount = kitchenOrders.filter((o) => o.status === "preparing").length;
+
+    if ($("statConfirmedCount")) $("statConfirmedCount").textContent = confirmedCount;
+    if ($("statPreparingCount")) $("statPreparingCount").textContent = preparingCount;
+
+    const grid = $("kitchenGrid");
+    const empty = $("kitchenEmpty");
+    if (!grid) return;
+
+    if (!kitchenOrders.length) {
+      grid.innerHTML = "";
+      if (empty) empty.style.display = "block";
+      return;
+    }
+    if (empty) empty.style.display = "none";
+
+    grid.innerHTML = kitchenOrders
+      .map((o) => {
+        const isDelivery = o.fulfillment_type === "delivery";
+        const fBadge = isDelivery ? "🛵 Delivery" : "🏃 Pickup";
+        const items = o.items || [];
+        const timeStr = new Date(o.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const estReady = o.estimated_ready_at
+          ? new Date(o.estimated_ready_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "--:--";
+
+        const actionBtn =
+          o.status === "pending"
+            ? `<button class="kc-btn kc-btn-prep" onclick="confirmAndPrepare(${o.id})">🍳 Confirm & Prepare</button>`
+            : o.status === "confirmed"
+            ? `<button class="kc-btn kc-btn-prep" onclick="startPreparing(${o.id})">🍳 Start Preparing</button>`
+            : `<button class="kc-btn kc-btn-ready" onclick="markReady(${o.id})">🔔 Mark Ready</button>`;
+
+        return `
+          <div class="kitchen-card status-${o.status}" id="kcard-${o.id}">
+            <div class="kc-head">
+              <span class="kc-num">#${o.order_number || o.id}</span>
+              <span class="fulfillment-pill">${fBadge}</span>
+              <span class="order-badge-pill badge-${o.status}">${o.status}</span>
+            </div>
+            <div class="kc-customer">
+              👤 <b>${esc(o.customer_name || "Customer")}</b> ${o.customer_phone ? `(${esc(o.customer_phone)})` : ""}
+            </div>
+            ${o.notes ? `<div class="kc-notes">📝 <b>Note:</b> ${esc(o.notes)}</div>` : ""}
+            <div class="kc-items">
+              ${items
+                .map(
+                  (it) => `
+                <div class="kc-item-row">
+                  <span>${esc(it.item_name || "Item #" + it.menu_item_id)}</span>
+                  <span class="kc-item-qty">${it.quantity}</span>
+                </div>`,
+                )
+                .join("")}
+            </div>
+            <div class="kc-timing">
+              <span>Ordered: <b>${timeStr}</b></span>
+              <span>⏱️ Prep: <b>~${o.prep_time_minutes || 20}m</b></span>
+              <span>Ready by: <b>${estReady}</b></span>
+            </div>
+            <div class="kc-actions">
+              ${actionBtn}
+            </div>
+          </div>`;
+      })
+      .join("");
+  } catch (err) {
+    toast("Failed to load kitchen queue: " + err.message);
+  }
+}
+
+async function confirmAndPrepare(id) {
+  try {
+    await API.updateOrderStatus(id, "confirmed", token);
+    await API.updateOrderStatus(id, "preparing", token);
+    toast(`Order #${id} is now PREPARING 🍳`);
+    loadKitchenOrders();
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+}
+
+async function startPreparing(id) {
+  try {
+    await API.updateOrderStatus(id, "preparing", token);
+    toast(`Order #${id} is now PREPARING 🍳`);
+    loadKitchenOrders();
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+}
+
+async function markReady(id) {
+  try {
+    await API.updateOrderStatus(id, "ready", token);
+    toast(`Order #${id} marked READY! 🔔`);
+    loadKitchenOrders();
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+}
+
+/* ============ Admin Orders Management Logic ============ */
+let allAdminOrders = [];
+let currentOrderTab = "all";
+let activeAdminOrderId = null;
+
+async function loadAdminOrders() {
+  try {
+    const list = await API.orders(token);
+    allAdminOrders = Array.isArray(list) ? list : [];
+    allAdminOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    renderOrdersTable();
+  } catch (err) {
+    toast("Failed to load orders: " + err.message);
+  }
+}
+
+function filterOrderTab(tab) {
+  currentOrderTab = tab;
+  document.querySelectorAll("#orderFilterTabs .order-tab-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  renderOrdersTable();
+}
+
+function renderOrdersTable() {
+  const tbody = $("ordersTableBody");
+  if (!tbody) return;
+
+  let filtered = allAdminOrders;
+  if (currentOrderTab === "new") {
+    filtered = allAdminOrders.filter((o) => o.status === "pending" || o.status === "confirmed");
+  } else if (currentOrderTab === "preparing") {
+    filtered = allAdminOrders.filter((o) => o.status === "preparing");
+  } else if (currentOrderTab === "ready") {
+    filtered = allAdminOrders.filter((o) => o.status === "ready");
+  } else if (currentOrderTab === "out_for_delivery") {
+    filtered = allAdminOrders.filter((o) => o.status === "out_for_delivery");
+  } else if (currentOrderTab === "completed") {
+    filtered = allAdminOrders.filter((o) => o.status === "delivered" || o.status === "picked_up");
+  } else if (currentOrderTab === "cancelled") {
+    filtered = allAdminOrders.filter((o) => o.status === "cancelled");
+  }
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">No orders found for this tab.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered
+    .map((o) => {
+      const isDelivery = o.fulfillment_type === "delivery";
+      const fBadge = isDelivery ? "🛵 Delivery" : "🏃 Pickup";
+      const itCount = (o.items || []).reduce((s, it) => s + it.quantity, 0);
+      const timeStr = new Date(o.created_at).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      return `
+        <tr>
+          <td><b>#${o.order_number || o.id}</b></td>
+          <td>
+            <b>${esc(o.customer_name || "Guest")}</b><br/>
+            <small style="color: var(--muted);">${esc(o.customer_phone || "")}</small>
+          </td>
+          <td><span class="fulfillment-pill">${fBadge}</span></td>
+          <td>${itCount} item${itCount > 1 ? "s" : ""}</td>
+          <td><b>${rupee(o.total)}</b></td>
+          <td><span class="order-badge-pill badge-${o.status}">${(o.status || "").replace(/_/g, " ")}</span></td>
+          <td style="color: var(--muted); font-size: 12.5px;">${timeStr}</td>
+          <td style="text-align: right;">
+            <button class="btn-outline" style="padding: 5px 12px; font-size: 12.5px;" onclick="openOrderDetail(${o.id})">Details</button>
+          </td>
+        </tr>`;
+    })
+    .join("");
+}
+
+function openOrderDetail(orderId) {
+  const o = allAdminOrders.find((x) => x.id === orderId);
+  if (!o) return;
+  activeAdminOrderId = orderId;
+
+  $("modalOrderNum").textContent = `Order #${o.order_number || o.id}`;
+  $("modalOrderDate").textContent = new Date(o.created_at).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const isDelivery = o.fulfillment_type === "delivery";
+  const items = o.items || [];
+
+  $("modalOrderContent").innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 12px;">
+      <div>
+        <span class="fulfillment-pill">${isDelivery ? "🛵 Delivery" : "🏃 Pickup"}</span>
+        <span class="order-badge-pill badge-${o.status}" style="margin-left: 6px;">${(o.status || "").replace(/_/g, " ")}</span>
+      </div>
+      <b style="font-size: 16px; color: var(--brand);">${rupee(o.total)}</b>
+    </div>
+
+    <div style="font-size: 13.5px; line-height: 1.5; margin-bottom: 12px;">
+      <div><b>Customer:</b> ${esc(o.customer_name || "Guest")} ${o.customer_phone ? `(${esc(o.customer_phone)})` : ""}</div>
+      ${isDelivery && o.delivery_address ? `<div><b>Address:</b> 📍 ${esc(o.delivery_address)}</div>` : ""}
+      ${o.notes ? `<div style="color: #b25e00; margin-top: 4px;">📝 <b>Notes:</b> ${esc(o.notes)}</div>` : ""}
+      <div style="color: var(--muted); font-size: 12.5px; margin-top: 4px;">
+        Prep: ~${o.prep_time_minutes || 20}m · Est. Ready: ${o.estimated_ready_at ? new Date(o.estimated_ready_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid var(--line); padding-top: 10px; margin-bottom: 12px;">
+      <h4 style="margin: 0 0 8px 0; font-size: 12.5px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;">Items Ordered</h4>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        ${items
+          .map(
+            (it) => `
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px;">
+            <span>${esc(it.item_name || "Item #" + it.menu_item_id)} <b>×${it.quantity}</b></span>
+            <span>${rupee(it.line_total || it.unit_price * it.quantity)}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </div>
+
+    <div style="border-top: 1px dashed var(--line); padding-top: 10px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--muted);">
+        <span>Subtotal</span><span>${rupee(o.subtotal || o.total)}</span>
+      </div>
+      ${o.discount ? `<div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--green);"><span>Discount</span><span>−${rupee(o.discount)}</span></div>` : ""}
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--muted);">
+        <span>Delivery fee</span><span>FREE</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; color: var(--ink); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line);">
+        <span>Total (${o.payment_status || "pending"})</span><span>${rupee(o.total)}</span>
+      </div>
+    </div>`;
+
+  const actionsEl = $("modalStatusActions");
+  if (actionsEl) {
+    let btns = "";
+    if (o.status === "pending") {
+      btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'confirmed')">Confirm Order</button>`;
+      btns += `<button class="btn-outline" style="color:var(--red); border-color:var(--red); padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'cancelled')">Cancel</button>`;
+    } else if (o.status === "confirmed") {
+      btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'preparing')">Start Preparing</button>`;
+      btns += `<button class="btn-outline" style="color:var(--red); border-color:var(--red); padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'cancelled')">Cancel</button>`;
+    } else if (o.status === "preparing") {
+      btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'ready')">Mark Ready</button>`;
+    } else if (o.status === "ready") {
+      if (isDelivery) {
+        btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'out_for_delivery')">Out for Delivery</button>`;
+      } else {
+        btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'picked_up')">Mark Picked Up</button>`;
+      }
+    } else if (o.status === "out_for_delivery") {
+      btns += `<button class="btn-primary" style="padding: 7px 14px; font-size: 12.5px;" onclick="adminUpdateStatus(${o.id}, 'delivered')">Mark Delivered</button>`;
+    }
+    actionsEl.innerHTML = btns;
+  }
+
+  $("orderDetailOverlay")?.classList.add("open");
+}
+
+function closeOrderDetailModal() {
+  activeAdminOrderId = null;
+  $("orderDetailOverlay")?.classList.remove("open");
+}
+
+async function adminUpdateStatus(orderId, newStatus) {
+  try {
+    await API.updateOrderStatus(orderId, newStatus, token);
+    toast(`Order status updated to ${newStatus.replace(/_/g, " ")}`);
+    await loadAdminOrders();
+    if (activeAdminOrderId === orderId) {
+      openOrderDetail(orderId);
+    }
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+}
+
 /* ============ Boot ============ */
 if (token) {
   showAdmin();
   refresh();
-} else if (PAGE === "dashboard") {
+} else if (PAGE === "dashboard" || PAGE === "kitchen" || PAGE === "orders") {
   showLogin();
 } else {
   location.href = "index.html";
